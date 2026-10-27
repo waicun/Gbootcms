@@ -169,7 +169,9 @@ func doScan() *mediaCacheData {
 		return mediaCache
 	case <-time.After(120 * time.Second):
 		mediaCacheMu.Lock()
-		mediaCache.Scanning = false
+		if mediaCache != nil {
+			mediaCache.Scanning = false
+		}
 		mediaCacheMu.Unlock()
 		return nil // 超時，返回空
 	}
@@ -739,7 +741,9 @@ func findUsages(filePath string) []UsageInfo {
 			for i := range vals {
 				ptrs[i] = &vals[i]
 			}
-			rows.Scan(ptrs...)
+			if err := rows.Scan(ptrs...); err != nil {
+				continue
+			}
 
 			if vals[0] == nil || vals[1] == nil {
 				continue
@@ -752,6 +756,9 @@ func findUsages(filePath string) []UsageInfo {
 					usages = append(usages, UsageInfo{rt.table, id, name, c.label})
 				}
 			}
+		}
+		if err := rows.Err(); err != nil {
+			slog.Warn("[MediaController] rows error", "table", rt.table, "err", err)
 		}
 		rows.Close()
 	}
@@ -901,12 +908,17 @@ func getUsedPaths() map[string]bool {
 			for i := range vals {
 				ptrs[i] = &vals[i]
 			}
-			rows.Scan(ptrs...)
+			if err := rows.Scan(ptrs...); err != nil {
+				continue
+			}
 			for _, v := range vals {
 				if v != nil && *v != "" {
 					addPaths(used, *v)
 				}
 			}
+		}
+		if err := rows.Err(); err != nil {
+			slog.Warn("[MediaController] rows error", "table", rt.table, "err", err)
 		}
 		rows.Close()
 	}

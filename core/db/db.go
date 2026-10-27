@@ -388,8 +388,9 @@ func toIntID(v interface{}) int {
 // CloseDB closes the database connection.
 func CloseDB() {
 	if DB != nil {
-		sqlDB, _ := DB.DB()
-		sqlDB.Close()
+		if sqlDB, err := DB.DB(); err == nil && sqlDB != nil {
+			_ = sqlDB.Close()
+		}
 	}
 }
 

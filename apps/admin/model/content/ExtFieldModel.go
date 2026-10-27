@@ -37,40 +37,32 @@ func EnsureExtFieldScodeColumn() {
 	}
 }
 
-// ColumnExistsInContentExt 檢查 ay_content_ext 表中是否已有指定列
+// ColumnExistsInContentExt 檢查 ay_content_ext 表中是否已有指定列（跨庫支援 GORM Migrator）
 func ColumnExistsInContentExt(colName string) bool {
-	type colInfo struct {
-		Cid  int
-		Name string
-	}
-	var cols []colInfo
-	db.DB.Raw("PRAGMA table_info(ay_content_ext)").Scan(&cols)
-	for _, c := range cols {
-		if c.Name == colName {
-			return true
-		}
+	if db.DB != nil {
+		return db.DB.Migrator().HasColumn("ay_content_ext", colName)
 	}
 	return false
 }
 
 // AddColumnToContentExt 動態添加列到 ay_content_ext 表
 func AddColumnToContentExt(colName, colType string) error {
-	return db.DB.Exec("ALTER TABLE ay_content_ext ADD COLUMN " + colName + " " + colType).Error
+	return db.DB.Exec("ALTER TABLE `ay_content_ext` ADD COLUMN `" + colName + "` " + colType).Error
 }
 
-// SqliteColumnTypeForExtType 根據欄位類型返回 SQLite 列類型（與 PHP 版一致）
+// SqliteColumnTypeForExtType 根據欄位類型返回標準列類型（兼容 SQLite 與 MySQL）
 func SqliteColumnTypeForExtType(typ string) string {
 	switch typ {
 	case "2": // 多行文本
-		return "TEXT(1000)"
-	case "7": // 日期時間
 		return "TEXT"
+	case "7": // 日期時間
+		return "DATETIME"
 	case "8": // 編輯器
-		return "TEXT(10000)"
+		return "LONGTEXT"
 	case "10": // 多圖
-		return "TEXT(1000)"
+		return "TEXT"
 	default: // 單行文本/單選/多選/圖片/檔案/下拉
-		return "TEXT(200)"
+		return "VARCHAR(255)"
 	}
 }
 
@@ -211,7 +203,16 @@ func UpdateExtField(id int, mcode, name, field, typ, value, scode string, requir
 	return db.DB.Exec("UPDATE ay_extfield SET mcode=?, name=?, field=?, type=?, value=?, scode=?, description=?, required=?, sorting=? WHERE id=?", mcode, name, field, typ, value, scode, name, required, sorting, id).Error
 }
 
+var allowedExtFieldSingleFields = map[string]bool{
+	"status":   true,
+	"sorting":  true,
+	"required": true,
+}
+
 func UpdateExtFieldSingleField(id int, field, value string) error {
+	if !allowedExtFieldSingleFields[field] {
+		return fmt.Errorf("欄位 %s 不在允許修改白名單內", field)
+	}
 	// SQL 注入防護：驗證欄位名（對齊 PbootCMS PHP checkKey）
 	if !isSafeIdentifier(field) {
 		return fmt.Errorf("非法欄位名: %s", field)

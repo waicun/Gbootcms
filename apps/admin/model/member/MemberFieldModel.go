@@ -1,8 +1,8 @@
 package member
 
 import (
+	"fmt"
 	"gbootcms/core/db"
-	"strconv"
 	"time"
 )
 
@@ -23,18 +23,10 @@ type MemberField struct {
 
 func (MemberField) TableName() string { return "ay_member_field" }
 
-// ColumnExistsInMember 檢查 ay_member 表中是否已有指定列（對齊 PHP isExistField）
+// ColumnExistsInMember 檢查 ay_member 表中是否已有指定列（跨庫支援 GORM Migrator）
 func ColumnExistsInMember(colName string) bool {
-	type colInfo struct {
-		Cid  int
-		Name string
-	}
-	var cols []colInfo
-	db.DB.Raw("PRAGMA table_info(ay_member)").Scan(&cols)
-	for _, c := range cols {
-		if c.Name == colName {
-			return true
-		}
+	if db.DB != nil {
+		return db.DB.Migrator().HasColumn("ay_member", colName)
 	}
 	return false
 }
@@ -48,12 +40,16 @@ func IsFieldRegistered(name string) bool {
 
 // AddColumnToMember 動態添加列到 ay_member 表
 func AddColumnToMember(colName string, length int) error {
-	return db.DB.Exec("ALTER TABLE ay_member ADD COLUMN " + colName + " TEXT(" + strconv.Itoa(length) + ")").Error
+	colType := fmt.Sprintf("VARCHAR(%d)", length)
+	if length <= 0 {
+		colType = "TEXT"
+	}
+	return db.DB.Exec("ALTER TABLE `ay_member` ADD COLUMN `" + colName + "` " + colType).Error
 }
 
 // DropColumnFromMember 從 ay_member 表刪除列（僅 MySQL 支援，SQLite 由控制器判斷跳過）
 func DropColumnFromMember(colName string) error {
-	return db.DB.Exec("ALTER TABLE ay_member DROP COLUMN " + colName).Error
+	return db.DB.Exec("ALTER TABLE `ay_member` DROP COLUMN `" + colName + "`").Error
 }
 
 // GetFieldNameByID 根據 ID 取得欄位名稱（刪除時用於確定要 DROP 的列名）

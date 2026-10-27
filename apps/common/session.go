@@ -174,6 +174,12 @@ func isSessionExpired(entry *sessionEntry) bool {
 
 // cleanupExpiredSessions 定期清理過期的 session（記憶體 + DB）
 func cleanupExpiredSessions() {
+	defer func() {
+		if r := recover(); r != nil {
+			slog.Error("[Session] cleanupExpiredSessions panic recovered", "panic", r)
+		}
+	}()
+
 	ticker := time.NewTicker(sessionCleanupInterval)
 	defer ticker.Stop()
 

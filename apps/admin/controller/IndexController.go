@@ -206,6 +206,7 @@ func (ic *IndexController) LoginOut(c *gin.Context) {
 }
 
 func (ic *IndexController) Home(c *gin.Context) {
+	cfg := config.Get()
 	if c.Query("action") == "moddb" {
 		if ic.modDB(c) {
 			ic.log(c, "自動修改資料庫名稱成功！")
@@ -213,7 +214,9 @@ func (ic *IndexController) Home(c *gin.Context) {
 	}
 
 	if deldb, ok := common.GetSession(c, "deldb").(string); ok && deldb != "" {
-		os.Remove(deldb)
+		if deldb != cfg.Database.DBName {
+			_ = os.Remove(deldb)
+		}
 		common.DeleteSessionKey(c, "deldb")
 	}
 

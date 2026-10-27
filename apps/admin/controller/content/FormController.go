@@ -3,6 +3,7 @@ package content
 import (	"gbootcms/core/db"
 
 	"fmt"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -14,6 +15,8 @@ import (	"gbootcms/core/db"
 
 	"github.com/gin-gonic/gin"
 )
+
+var safeTableRegex = regexp.MustCompile(`^[\w]+$`)
 
 // FormController 自定義表單控制器（對齊 PHP: FormController.php）
 type FormController struct {
@@ -59,9 +62,12 @@ func (fm *FormController) Index(c *gin.Context) {
 		if action == "showdata" {
 			// 查看數據
 			tableName := form.TableName
+			if !safeTableRegex.MatchString(tableName) {
+				fm.JSONFail(c, "表名非法")
+				return
+			}
 			var rawData []map[string]interface{}
-			// 動態表（ay_diy_*）無 acode 欄位，不需 WithContext
-			db.DB.Raw("SELECT * FROM `" + tableName + "` ORDER BY id DESC").Scan(&rawData)
+			db.DB.WithContext(c.Request.Context()).Raw("SELECT * FROM `" + tableName + "` ORDER BY id DESC").Scan(&rawData)
 
 			// 將 map 鍵名轉為 PascalCase，讓模板引擎 [value->field] 能正確訪問
 			dataList := make([]map[string]interface{}, len(rawData))
@@ -198,7 +204,7 @@ func (fm *FormController) Add(c *gin.Context) {
 		// 創建物理表（DDL 操作，無需 WithContext）
 		cfg := config.Get()
 		if cfg.Database.Type == "mysql" {
-			if err := db.DB.Exec("CREATE TABLE `" + tableName + "` (`id` int(10) unsigned NOT NULL AUTO_INCREMENT,`create_time` datetime NOT NULL,PRIMARY KEY (`id`)) ENGINE=MyISam DEFAULT CHARSET=utf8").Error; err != nil {
+			if err := db.DB.Exec("CREATE TABLE `" + tableName + "` (`id` int(10) unsigned NOT NULL AUTO_INCREMENT,`create_time` datetime NOT NULL,PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4").Error; err != nil {
 				fm.JSONFail(c, "操作失敗: "+err.Error())
 				return
 			}
@@ -348,12 +354,11 @@ func (fm *FormController) Del(c *gin.Context) {
 			return
 		}
 		tableName := contentModel.GetFormTableByCode(fcode)
-		if tableName == "" {
-			fm.JSONFail(c, "表單不存在")
+		if tableName == "" || !safeTableRegex.MatchString(tableName) {
+			fm.JSONFail(c, "表單不存在或表名非法")
 			return
 		}
-		// 動態表（ay_diy_*）無 acode 欄位，無需 WithContext
-		if err := db.DB.Exec("DELETE FROM `"+tableName+"` WHERE id = ?", id).Error; err != nil {
+		if err := db.DB.WithContext(c.Request.Context()).Exec("DELETE FROM `"+tableName+"` WHERE id = ?", id).Error; err != nil {
 			fm.JSONFail(c, "操作失敗: "+err.Error())
 			return
 		}
@@ -544,12 +549,11 @@ func (fm *FormController) Clear(c *gin.Context) {
 		return
 	}
 	tableName := contentModel.GetFormTableByCode(fcode)
-	if tableName == "" {
-		fm.JSONFail(c, "表單不存在")
+	if tableName == "" || !safeTableRegex.MatchString(tableName) {
+		fm.JSONFail(c, "表單不存在或表名非法")
 		return
 	}
-	// 動態表（ay_diy_*）無 acode 欄位，無需 WithContext
-	if err := db.DB.Exec("DELETE FROM `" + tableName + "`").Error; err != nil {
+	if err := db.DB.WithContext(c.Request.Context()).Exec("DELETE FROM `" + tableName + "`").Error; err != nil {
 		fm.JSONFail(c, "操作失敗: "+err.Error())
 		return
 	}

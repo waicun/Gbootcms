@@ -51,6 +51,11 @@ func getRedirectRules() []content.Redirect {
 func RedirectMiddleware() gin.HandlerFunc {
 	// 啟動後延遲載入 301 自定義規則
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				// 避免預加載 panic 拖垮進程
+			}
+		}()
 		time.Sleep(3 * time.Second)
 		loadRedirectRules()
 	}()

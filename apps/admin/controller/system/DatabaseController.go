@@ -4,6 +4,7 @@ import (	"gbootcms/core/db"
 
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -249,9 +250,12 @@ func (ctrl *DatabaseController) backupTableAction(c *gin.Context) {
 		sqlContent += ctrl.dataSql(t)
 	}
 
-	filename := fmt.Sprintf("pbootcms_%s_%s.sql", strings.Join(tables, "_"), time.Now().Format("20060102150405"))
+	filename := fmt.Sprintf("gbootcms_%s_%s.sql", strings.Join(tables, "_"), time.Now().Format("20060102150405"))
 	filePath := filepath.Join(backupDir, filename)
-	ctrl.writeFile(filePath, sqlContent)
+	if err := ctrl.writeFile(filePath, sqlContent); err != nil {
+		ctrl.JSONFail(c, "備份寫入失敗: "+err.Error())
+		return
+	}
 	ctrl.JSONOKMsg(c, common.NoticeBackup)
 }
 
@@ -275,9 +279,12 @@ func (ctrl *DatabaseController) backupDBAction(c *gin.Context) {
 		sqlContent += ctrl.dataSql(t)
 	}
 
-	filename := fmt.Sprintf("pbootcms_db_%s.sql", time.Now().Format("20060102150405"))
+	filename := fmt.Sprintf("gbootcms_db_%s.sql", time.Now().Format("20060102150405"))
 	filePath := filepath.Join(backupDir, filename)
-	ctrl.writeFile(filePath, sqlContent)
+	if err := ctrl.writeFile(filePath, sqlContent); err != nil {
+		ctrl.JSONFail(c, "備份寫入失敗: "+err.Error())
+		return
+	}
 	ctrl.JSONOKMsg(c, common.NoticeBackup)
 }
 
@@ -299,7 +306,7 @@ func (ctrl *DatabaseController) backupSQLiteAction(c *gin.Context) {
 	}
 	defer srcFile.Close()
 
-	filename := fmt.Sprintf("pbootcms_%s.db", time.Now().Format("20060102150405"))
+	filename := fmt.Sprintf("gbootcms_%s.db", time.Now().Format("20060102150405"))
 	dstPath := filepath.Join(backupDir, filename)
 
 	dstFile, err := os.Create(dstPath)
@@ -399,7 +406,9 @@ func (ctrl *DatabaseController) dataSql(tableName string) string {
 	colList := strings.Join(colNames, ", ")
 
 	for rows.Next() {
-		rows.Scan(valuePtrs...)
+		if err := rows.Scan(valuePtrs...); err != nil {
+			continue
+		}
 
 		valStrs := make([]string, colCount)
 		for i, val := range values {
@@ -423,12 +432,15 @@ func (ctrl *DatabaseController) dataSql(tableName string) string {
 			tableName, colList, strings.Join(valStrs, ", ")))
 	}
 	sb.WriteString("\n")
+	if err := rows.Err(); err != nil {
+		slog.Warn("[DatabaseController] backupTableData rows error", "table", tableName, "err", err)
+	}
 
 	return sb.String()
 }
 
-func (ctrl *DatabaseController) writeFile(filePath string, content string) {
-	os.WriteFile(filePath, []byte(content), 0644)
+func (ctrl *DatabaseController) writeFile(filePath string, content string) error {
+	return os.WriteFile(filePath, []byte(content), 0644)
 }
 
 func (ctrl *DatabaseController) getTableList(c *gin.Context) ([]string, error) {

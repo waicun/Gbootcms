@@ -32,10 +32,64 @@ type memCacheEntry struct {
 	tagChecksum int64    // 建立時所有 tag 版本號之和（下次讀取時重新計算並比較）
 }
 
+const maxMemCacheEntries = 2000
+
 var (
-	memCache sync.Map // key: cacheKey(string), value: memCacheEntry
-	sfGroup  singleflight.Group
+	memCache      sync.Map // key: cacheKey(string), value: memCacheEntry
+	memCacheCount atomic.Int64
+	sfGroup       singleflight.Group
 )
+
+func deleteMemCacheEntry(key string) {
+	if _, loaded := memCache.LoadAndDelete(key); loaded {
+		memCacheCount.Add(-1)
+	}
+}
+
+func evictExpiredMemCache() {
+	now := time.Now().Unix()
+	var count int64
+	memCache.Range(func(key, value interface{}) bool {
+		if e, ok := value.(memCacheEntry); ok {
+			if now > e.staleUntil || computeTagChecksum(e.tags) != e.tagChecksum {
+				deleteMemCacheEntry(key.(string))
+			} else {
+				count++
+			}
+		}
+		return true
+	})
+	if count >= 0 {
+		memCacheCount.Store(count)
+	}
+}
+
+func storeMemCacheEntry(key string, entry memCacheEntry) {
+	if memCacheCount.Load() > maxMemCacheEntries {
+		evictExpiredMemCache()
+		if memCacheCount.Load() > maxMemCacheEntries {
+			return
+		}
+	}
+	if _, loaded := memCache.LoadOrStore(key, entry); !loaded {
+		memCacheCount.Add(1)
+	}
+}
+
+func init() {
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				slog.Error("[HTMLCache] evictor panic recovered", "panic", r)
+			}
+		}()
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			evictExpiredMemCache()
+		}
+	}()
+}
 
 // --- Cache Tag 系統（對齊 Drupal Cache Tags + Checksum 懶失效機制） ---
 //
@@ -123,6 +177,7 @@ func ClearHTMLCache() {
 		memCache.Delete(key)
 		return true
 	})
+	memCacheCount.Store(0)
 
 	// 清除檔案快取
 	cacheDir := filepath.Join("runtime", "cache")
@@ -220,7 +275,7 @@ func HTMLCache() gin.HandlerFunc {
 				return
 			}
 			// tag 失效（內容已變更）或超過 stale 窗口 → 刪除過期條目
-			memCache.Delete(cacheKeyHash)
+			deleteMemCacheEntry(cacheKeyHash)
 		}
 
 		// --- 第二層：檔案緩存 ---
@@ -242,7 +297,7 @@ func HTMLCache() gin.HandlerFunc {
 							tags:        defaultTags,
 							tagChecksum: computeTagChecksum(defaultTags),
 						}
-						memCache.Store(cacheKeyHash, e)
+						storeMemCacheEntry(cacheKeyHash, e)
 						serveCacheEntry(c, e, "HIT-FILE")
 						return
 					}
@@ -291,7 +346,7 @@ func HTMLCache() gin.HandlerFunc {
 					tags = []string{"global"}
 				}
 
-				memCache.Store(cacheKeyHash, memCacheEntry{
+				storeMemCacheEntry(cacheKeyHash, memCacheEntry{
 					content:     body,
 					gzipContent: gzipBody,
 					expireAt:    nowInner + int64(cacheTTL.Seconds()),
