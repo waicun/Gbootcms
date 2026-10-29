@@ -178,7 +178,10 @@
                         <tbody>
                             <tr>
                                 <th width="120">核心架構</th>
-                                <td><strong>GbootCMS {{ AppVersion }}</strong> (Go + Gin + GORM)</td>
+                                <td>
+                                    <strong>GbootCMS {{ AppVersion }}</strong> (Go + Gin + GORM)
+                                    <button id="btnCheckUpdate" class="layui-btn layui-btn-xs layui-btn-normal" style="margin-left: 8px;"><i class="fa fa-refresh"></i> 檢查更新</button>
+                                </td>
                             </tr>
                             <tr>
                                 <th>二進制規格</th>
@@ -210,5 +213,62 @@
     </div>
 
 </div>
+
+<script>
+layui.use(['layer'], function(){
+    var layer = layui.layer;
+    var $ = layui.$;
+
+    $('#btnCheckUpdate').on('click', function(){
+        var loadIdx = layer.load(2, {shade: [0.1, '#fff']});
+        $.get('/admin/upgrade/check', function(res){
+            layer.close(loadIdx);
+            if(res.code !== 1) {
+                layer.msg(res.msg || '檢查更新失敗', {icon: 2});
+                return;
+            }
+            var data = res.data;
+            if(!data.has_update) {
+                layer.msg('當前已是最新版本 (' + data.current_version + ')', {icon: 1});
+                return;
+            }
+
+            var contentHtml = '<div style="padding: 20px; line-height: 22px;">' +
+                '<p><strong>發現新版本：</strong><span class="layui-badge layui-bg-blue">' + data.latest_version + '</span> （當前版本：' + data.current_version + '）</p>' +
+                '<p style="margin-top: 10px;"><strong>更新說明：</strong></p>' +
+                '<pre style="margin-top: 6px; padding: 10px; background: #f8f8f8; border-radius: 4px; font-size: 13px; max-height: 180px; overflow-y: auto; white-space: pre-wrap;">' + (data.release_notes || '暫無更新說明') + '</pre>' +
+                '</div>';
+
+            layer.open({
+                type: 1,
+                title: '發現新版本 ' + data.latest_version,
+                area: ['480px', 'auto'],
+                btn: ['立即在線升級', '稍後再說'],
+                content: contentHtml,
+                yes: function(index){
+                    layer.close(index);
+                    var upgIdx = layer.msg('正在下載最新二進制並執行原地更新，請勿關閉視窗...', {icon: 16, shade: 0.4, time: 0});
+                    $.post('/admin/upgrade/apply', function(upgRes){
+                        layer.close(upgIdx);
+                        if(upgRes.code === 1) {
+                            layer.alert(upgRes.msg, {icon: 1, title: '升級成功'}, function(){
+                                location.reload();
+                            });
+                        } else {
+                            layer.alert(upgRes.msg || '升級失敗', {icon: 2, title: '升級異常'});
+                        }
+                    }).fail(function(){
+                        layer.close(upgIdx);
+                        layer.alert('請求已送出，服務正在重啟，請稍後刷新頁面。', {icon: 1});
+                    });
+                }
+            });
+        }).fail(function(){
+            layer.close(loadIdx);
+            layer.msg('網路請求失敗，無法連接更新服務器', {icon: 2});
+        });
+    });
+});
+</script>
 
 {include file='common/foot.html'}

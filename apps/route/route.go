@@ -242,6 +242,12 @@ func SetupAdminRoutes(r *gin.Engine) {
 		adminGroup.POST("/system/syslog/clearspider", slc.ClearSpider)
 		adminGroup.POST("/system/syslog/clearnotify", slc.ClearNotify)
 
+		upg := &system.UpgradeController{}
+		adminGroup.GET("/upgrade/check", upg.Check)
+		adminGroup.POST("/upgrade/apply", upg.Apply)
+		adminGroup.GET("/system/upgrade/check", upg.Check)
+		adminGroup.POST("/system/upgrade/apply", upg.Apply)
+
 		mb := &member.MemberController{}
 	adminGroup.GET("/member/index", mb.Index)
 	adminGroup.GET("/member/add", mb.Add)
