@@ -7,7 +7,7 @@ import (
 
 var (
 	// Version 應用程式版本
-	Version = "v1.0.0"
+	Version = "v1.0.1"
 	// GitCommit 編譯時由 -ldflags 注入的 Git Commit 雜湊
 	GitCommit = "HEAD"
 	// BuildTime 編譯時由 -ldflags 注入的構建時間
