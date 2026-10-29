@@ -107,3 +107,5 @@ node_modules/
 tools/
 
 deploy.bat
+docs/
+wiki/
