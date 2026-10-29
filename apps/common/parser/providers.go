@@ -500,8 +500,8 @@ func registerPairProviders(p *TagParser, ctx *Context) {
 			if pic == "" {
 				continue
 			}
-			// 確保路徑以 / 開頭
-			if !strings.HasPrefix(pic, "/") {
+			// 確保相對路徑以 / 開頭（外鏈 http/https 或 // 不加前綴）
+			if !strings.HasPrefix(pic, "/") && !strings.HasPrefix(pic, "http") && !strings.HasPrefix(pic, "//") {
 				pic = "/" + pic
 			}
 			data := map[string]interface{}{
