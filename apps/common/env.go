@@ -13,7 +13,7 @@ import (	"gbootcms/apps/admin/model/content"
 // 規則：
 //  1. 若 Host 包含 .eu.org、.test、.local、localhost、127.0.0.1、或包含端口號（:8080 等），直接判定為非生產環境
 //  2. 檢查環境變量 ENV / APP_ENV
-//  3. 若後台配置了生產域名（如 hkcmereye.com），而當前請求 Host 與之不一致，直接判定為測試站
+//  3. 若後台配置了生產域名（如 example.com），而當前請求 Host 與之不一致，直接判定為測試站
 func IsStagingHost(c *gin.Context) bool {
 	if c == nil || c.Request == nil {
 		return false
@@ -73,7 +73,7 @@ func GetProductionDomain(c *gin.Context) string {
 }
 
 // GetRequestBaseURL 獲取當前請求應用的基礎 URL
-// 關鍵：如果當前為測試站（如 gocms.icun.eu.org），嚴格使用當前測試主機，絕不跨域名綁定生產域名！
+// 關鍵：如果當前為測試站（如 staging.example.com），嚴格使用當前測試主機，絕不跨域名綁定生產域名！
 func GetRequestBaseURL(c *gin.Context) string {
 	scheme := "http"
 	if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {

@@ -28,7 +28,7 @@ func acodeToHreflang(acode string) string {
 
 // getEffectiveDomain 獲取當前頁面生效的域名（包含協議）
 func getEffectiveDomain(ctx *Context) string {
-	// 如果是測試環境（如 gocms.icun.eu.org、localhost 等），強制使用當前請求的動態 Host，絕不跨域名污染生產站
+	// 如果是測試環境（如 dev.example.com、localhost 等），強制使用當前請求的動態 Host，絕不跨域名污染生產站
 	if ctx != nil && ctx.HttpURL != "" {
 		host := strings.ToLower(ctx.HttpURL)
 		if strings.Contains(host, ".eu.org") || strings.Contains(host, "localhost") || strings.Contains(host, "127.0.0.1") ||

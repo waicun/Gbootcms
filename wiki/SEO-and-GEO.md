@@ -1,31 +1,26 @@
-# SEO 與 GEO 規範配套 (SEO & GEO)
+# 🤖 SEO 與 AI 檢索規範 (SEO & GEO)
 
-Gbootcms 為現代搜尋引擎（Google、Bing）及 AI 檢索代理（SearchGPT、Perplexity、Claude）提供了成體系、全自動、零手動維護的底層支持。
+Gbootcms 內建搜尋引擎最佳化（SEO）與生成式引擎檢索（GEO）支援機制，提供動態環境感知、結構化資料輸出與大模型端點。
 
 ---
 
-## 1. 動態環境感知 Robots.txt
+## 🛡️ 動態環境感知 Robots.txt
 
-傳統系統往往需要維護靜態 `robots.txt`，一旦測試站忘記設置 `Disallow`，就會導致測試域名被搜尋引擎收錄並判定主站「重複內容（Duplicate Content）」。
-
-Gbootcms 代碼自動根據請求的 `Host` 感知環境：
+系統根據連線請求的 `Host` 與後台配置的正式網域自動判定環境狀態：
 
 ```go
-// 核心邏輯展示
 func RobotsHandler(c *gin.Context) {
-    host := c.Request.Host
-    isProduction := (host == config.SiteDomain)
-
-    if !isProduction {
-        // 測試環境 / 預發環境：強制禁止一切爬蟲，並附加 noindex HTTP 頭
+    if IsStagingHost(c) {
+        // 測試/開發環境：阻擋所有爬蟲抓取，並附加 HTTP 響應頭
         c.Header("X-Robots-Tag", "noindex, nofollow")
         c.String(http.StatusOK, "User-agent: *\nDisallow: /\n")
         return
     }
 
-    // 正式生產環境：放行爬蟲，並輸出 Sitemap 索引位址
+    // 正式生產環境：放行爬蟲並輸出 Sitemap 索引位址
+    host := GetRequestBaseURL(c)
     c.String(http.StatusOK, fmt.Sprintf(
-        "User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\n\nSitemap: https://%s/sitemap.xml\n", 
+        "User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\n\nSitemap: %s/sitemap.xml\n", 
         host,
     ))
 }
@@ -33,9 +28,22 @@ func RobotsHandler(c *gin.Context) {
 
 ---
 
-## 2. 結構化資料 JSON-LD (`Schema.org`)
+## 🗺️ 多語系 XML Sitemap
 
-在前台公共頭部加入 `{gboot:schema}` 標籤，系統自動產出標準結構化資料：
+系統自動註冊並動態輸出符合 Sitemaps.org 規範的 XML 索引：
+
+| 端點 URL | 功能說明 |
+| :--- | :--- |
+| `/sitemap.xml` | 站點 Sitemap 總索引（Sitemap Index），分發各語言子索引 |
+| `/sitemap-tc.xml` | 繁體中文區域欄目與文章 URL 索引 |
+| `/sitemap-en.xml` | 英文區域 URL 索引 |
+| `/sitemap-sc.xml` | 簡體中文區域 URL 索引 |
+
+---
+
+## 📋 JSON-LD 結構化資料 (`Schema.org`)
+
+前台模板引用 `{gboot:schema}` 標籤時，自動依據頁面類型生成結構化 JSON-LD：
 
 ```html
 <script type="application/ld+json">
@@ -64,21 +72,23 @@ func RobotsHandler(c *gin.Context) {
 </script>
 ```
 
-> **嚴格一致性約束**：JSON-LD 的 `mainEntityOfPage.@id` 必須與頁面的 `<link rel="canonical">` 100% 相同，避免規範衝突。
+> [!NOTE]
+> JSON-LD 之 `mainEntityOfPage.@id` 與頁面標籤 `<link rel="canonical" href="...">` 保持相同數值。
 
 ---
 
-## 3. 大模型檢索索引 (`/llms.txt`)
+## 🤖 大模型檢索端點 (`/llms.txt`)
 
-針對現代 LLM 爬蟲，提供標準 `/llms.txt` 端點：
-- 列出站點主題、核心欄目摘要、主要文章與文檔索引。
-- 支援 `/llms-full.txt` 提供 Markdown 格式的完整站點知識庫輸出。
+為 AI Agent 與 LLM 爬蟲提供低資源消耗之純文字索引：
+
+- `/llms.txt`：精簡版全站知識庫導航與重點欄目描述。
+- `/llms-full.txt`：完整 Markdown 格式文檔聚合輸出。
 
 ---
 
-## 4. 營銷歸因 Cookie 潔淨度
+## 🧹 訪客歸因路徑過濾
 
-`apps/common/attribution.go` 在記錄 `g_landing_page` 與來源管道時，自動排除非前端業務路徑：
-- `/robots.txt`, `/sitemap*`, `/llms.txt`
-- `/api/*`, `/admin/*`, `/static/*`, `/upload/*`, `/favicon.ico`
-- 確保爬蟲訪問不會在伺服器端產生無效 Cookie 或污染日誌分析。
+訪客著陸頁面與 UTM 參數追蹤模組（`apps/common/attribution.go`）自動忽略以下系統端點，避免爬蟲抓取污染歸因統計：
+
+- `/robots.txt`、`/sitemap*.xml`、`/llms*.txt`
+- `/api/*`、`/admin/*`、`/static/*`、`/upload/*`、`/favicon.ico`

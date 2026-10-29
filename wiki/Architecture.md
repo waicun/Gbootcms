@@ -1,47 +1,42 @@
-# 系統架構 (Architecture)
+# 📦 系統架構 (Architecture)
 
-Gbootcms 嚴格依循**奧卡姆剃刀原則**構建，杜絕層層封裝與偽分層。
+Gbootcms 採用單一二進制與扁平模組化設計，各層次職責邊界清晰，避免過度封裝。
 
 ---
 
-## 1. 架構全景圖
+## 🏛️ 架構全景
 
-```
-                    +---------------------------+
-                    |    HTTP 請求 (Client)     |
-                    +-------------+-------------+
-                                  |
-                                  v
-                    +---------------------------+
-                    |    Gin 路由器 (route.go)  |
-                    +-------------+-------------+
-                                  |
-         +------------------------+------------------------+
-         |                                                 |
-         v                                                 v
-+------------------+                              +------------------+
-| 前台 TagParser   |                              | 後台 Pongo2      |
-| ({gboot:xxx})    |                              | (Layui+UnoCSS)   |
-| 路徑前綴 + 語言模板|                              | 遙測監控 / 媒體庫 |
-+--------+---------+                              +--------+---------+
-         |                                                 |
-         +------------------------+------------------------+
-                                  |
-                                  v
-                    +---------------------------+
-                    |  唯一 DB 引擎 (core/db)   |
-                    |  SQLite WAL 讀寫池 (20:1) |
-                    +---------------------------+
+```mermaid
+flowchart TD
+    Client["客戶端 HTTP 請求"] --> Router["Gin 路由器 (apps/route)"]
+    Router -->|前台展示| Parser["TagParser 前台解析器"]
+    Router -->|管理後台| AdminView["Pongo2 視圖渲染器"]
+    Router -->|RESTful API| APIController["API 控制器 (JWT / API Key)"]
+    
+    Parser --> Context["語言與欄目 Context"]
+    Context --> DB["core/db 連線池 (SQLite WAL)"]
+    AdminView --> DB
+    APIController --> DB
 ```
 
 ---
 
-## 2. 唯一資料庫入口 (`core/db/db.go`)
+## 🗄️ 資料庫連線池設計 (`core/db/db.go`)
 
-全系統只有一個資料庫實例 `core/db.DB`，以 WAL 模式運行，徹底消除 SQL 排隊瓶頸。
+系統維持全域單一資料庫連線實例，避免重複開啟連線耗用檔案控制代碼。
+
+### SQLite PRAGMA 核心參數
+
+| 參數 | 設定值 | 功能說明 |
+| :--- | :--- | :--- |
+| `journal_mode` | `WAL` | 寫入預寫日誌模式，允許多 reader 與單 writer 併發執行 |
+| `synchronous` | `NORMAL` | 同步寫入策略，平衡 I/O 效率與資料安全 |
+| `busy_timeout` | `5000` | 鎖競爭逾時重試上限（毫秒） |
+| `cache_size` | `-64000` | 頁面快取上限（約 64MB 記憶體） |
+
+### 連線池設定代碼
 
 ```go
-// core/db/db.go - WAL 連線池配置
 func InitDB(cfg *config.Config) error {
     db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{
         Logger: logger.Default.LogMode(logMode),
@@ -51,15 +46,18 @@ func InitDB(cfg *config.Config) error {
     }
     
     sqlDB, err := db.DB()
-    sqlDB.SetMaxOpenConns(20)              // 允許 20 個並發讀操作
+    if err != nil {
+        return err
+    }
+
+    sqlDB.SetMaxOpenConns(20)
     sqlDB.SetMaxIdleConns(5)
     sqlDB.SetConnMaxLifetime(time.Hour)
 
-    // PRAGMA 性能調優
-    db.Exec("PRAGMA journal_mode = WAL;")        // WAL 模式：並發讀與單寫互不阻塞
-    db.Exec("PRAGMA synchronous = NORMAL;")     // 平衡性能與安全性
-    db.Exec("PRAGMA busy_timeout = 5000;")       // 鎖定等待 5 秒
-    db.Exec("PRAGMA cache_size = -64000;")      // 64MB 記憶體頁快取
+    db.Exec("PRAGMA journal_mode = WAL;")
+    db.Exec("PRAGMA synchronous = NORMAL;")
+    db.Exec("PRAGMA busy_timeout = 5000;")
+    db.Exec("PRAGMA cache_size = -64000;")
 
     DB = db
     return nil
@@ -68,14 +66,12 @@ func InitDB(cfg *config.Config) error {
 
 ---
 
-## 3. 唯一資料庫遷移入口 (`apps/admin/model/migrate.go`)
+## 🔄 結構遷移機制 (`apps/admin/model/migrate.go`)
 
-取代過去碎片化的 migrate 檔案，收斂為單一全域函數：
+系統將各業務模組的資料表自動遷移收斂為單一全域呼叫入口：
 
 ```go
-// apps/admin/model/migrate.go
 func MigrateAll() error {
-    // 依序執行系統、內容、會員三模組的 GORM AutoMigrate
     if err := system.AutoMigrate(DB); err != nil {
         return err
     }
@@ -91,14 +87,17 @@ func MigrateAll() error {
 
 ---
 
-## 4. 統一遙測引擎 (`core/version/telemetry.go`)
+## 📊 運行時系統遙測 (`core/version/telemetry.go`)
 
-無論在後台首頁快捷卡片，還是詳細伺服器狀態頁，所有指標均由同一函數產出，保證數值 100% 同步：
+後台首頁與伺服器資訊頁統一由標準遙測函式提供指標數據：
 
 ```go
-// 調用範例
 telemetry := version.GetTelemetry()
-fmt.Printf("進程運行時間: %s\n", telemetry.Uptime)
-fmt.Printf("已分配記憶體: %.2f MB\n", telemetry.AllocMB)
-fmt.Printf("活躍 Goroutines: %d\n", telemetry.Goroutines)
+// 返回欄位：
+// - telemetry.Uptime: 進程運行持續時間
+// - telemetry.AllocMB: 已分配堆記憶體 (MB)
+// - telemetry.TotalAllocMB: 累計分配記憶體 (MB)
+// - telemetry.SysMB: 系統保留記憶體 (MB)
+// - telemetry.NumGC: GC 觸發次數
+// - telemetry.Goroutines: 當前活躍 Goroutine 數量
 ```

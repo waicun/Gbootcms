@@ -1,27 +1,47 @@
-# 前台標籤語法手冊 (TagParser Guide)
+# 🏷️ 標籤解析語法 (TagParser Guide)
 
-Gbootcms 前台視圖採用自主研發的高效能標籤引擎 `TagParser`，具備正則全局預編譯、樹狀 CTE 欄目遞歸與記憶體頁面快取能力。
+Gbootcms 前台模板引擎使用 `TagParser` 解析器，相容 `{gboot:xxx}` 標籤語法，支援欄目遞迴、內容列表分頁與通用變量解析。
 
 ---
 
-## 1. 站點與全域變量
+## 🌐 站點與公司全域標籤
+
+在全域模板中存取系統基礎設定值：
+
+| 標籤 | 輸出內容 | 範例 |
+| :--- | :--- | :--- |
+| `{gboot:site:title}` | 網站主標題 | `Gbootcms` |
+| `{gboot:site:subtitle}` | 網站副標題 | `企業內容管理系統` |
+| `{gboot:site:keywords}` | 站點關鍵字 | `Go CMS, 高性能` |
+| `{gboot:site:description}` | 站點描述說明 | `基於 Go 語言的內容管理系統` |
+| `{gboot:site:logo}` | 站點 Logo 圖片路徑 | `/static/upload/...` |
+| `{gboot:company:name}` | 公司名稱 | `企業網絡科技` |
+| `{gboot:company:phone}` | 聯絡電話 | `0755-88888888` |
+| `{gboot:company:address}` | 公司地址 | `資訊科技園區` |
+
+### 範例：HTML Head 區塊
 
 ```html
-<!-- 站點基本資訊 -->
-<title>{gboot:site:title} - {gboot:site:subtitle}</title>
-<meta name="keywords" content="{gboot:site:keywords}">
-<meta name="description" content="{gboot:site:description}">
-<link rel="icon" href="/{gboot:site:logo}">
-
-<!-- 公司資訊 -->
-<p>公司名稱：{gboot:company:name}</p>
-<p>聯繫電話：{gboot:company:phone}</p>
-<p>聯繫地址：{gboot:company:address}</p>
+<head>
+    <title>{gboot:site:title} - {gboot:site:subtitle}</title>
+    <meta name="keywords" content="{gboot:site:keywords}">
+    <meta name="description" content="{gboot:site:description}">
+    <link rel="icon" href="{gboot:site:logo}">
+</head>
 ```
 
 ---
 
-## 2. 導航選單 (`{gboot:nav}`)
+## 🧭 導航選單標籤 (`{gboot:nav}`)
+
+### 標籤參數
+
+| 參數 | 類型 | 預設值 | 說明 |
+| :--- | :--- | :--- | :--- |
+| `parent` | 數字 | `0` | 父欄目編號，`0` 表示頂級導航 |
+| `num` | 數字 | 全部 | 提取導航筆數限制 |
+
+### 程式碼範例
 
 ```html
 <ul class="nav">
@@ -29,7 +49,6 @@ Gbootcms 前台視圖採用自主研發的高效能標籤引擎 `TagParser`，�
     {gboot:nav parent=0}
     <li class="{if('[nav:scode]'=='{gboot:sort:tcode}')}active{/if}">
         <a href="[nav:link]">[nav:name]</a>
-        <!-- 二級下拉子選單 -->
         {if([nav:soncount]>0)}
         <ul class="sub-nav">
             {gboot:nav parent=[nav:scode]}
@@ -44,12 +63,22 @@ Gbootcms 前台視圖採用自主研發的高效能標籤引擎 `TagParser`，�
 
 ---
 
-## 3. 文章/內容列表 (`{gboot:list}`)
+## 📰 內容列表標籤 (`{gboot:list}`)
 
-支援分頁、多條件排序、推薦置頂篩選：
+用於輸出指定欄目或全站的文章與產品清單，支援分頁與多欄位排序。
+
+### 標籤參數
+
+| 參數 | 類型 | 預設值 | 說明 |
+| :--- | :--- | :--- | :--- |
+| `scode` | 數字/逗號字串 | 當前欄目 | 目標欄目代碼，支援 `scode=2,3` |
+| `num` | 數字 | `10` | 每一頁或單批提取筆數 |
+| `order` | 字串 | `sorting asc, id desc` | 排序規則，如 `date desc`、`visits desc` |
+| `page` | 數字 | `1` | 是否啟用分頁計算（`0` 關閉，`1` 開啟） |
+
+### 程式碼範例
 
 ```html
-<!-- 查詢欄目 scode=2 下的最新 10 篇文章 -->
 {gboot:list scode=2 num=10 order='date desc'}
 <div class="news-item">
     <a href="[list:link]">
@@ -61,7 +90,7 @@ Gbootcms 前台視圖採用自主研發的高效能標籤引擎 `TagParser`，�
 </div>
 {/gboot:list}
 
-<!-- 分頁條渲染 -->
+<!-- 分頁導航條 -->
 <div class="pagination">
     {gboot:pagebar}
 </div>
@@ -69,27 +98,25 @@ Gbootcms 前台視圖採用自主研發的高效能標籤引擎 `TagParser`，�
 
 ---
 
-## 4. 內容詳情頁標籤
+## 📄 內容詳情頁標籤 (`{gboot:content:xxx}`)
 
-在詳情頁（如 `content.html`）中直接提取當前文章欄位：
+於文章詳情頁（`content.html`）提取當前紀錄數值：
 
 ```html
 <article class="article-detail">
     <h1>{gboot:content:title}</h1>
     <div class="meta">
-        <span>作者：{gboot:content:author}</span>
-        <span>時間：{gboot:content:date style='Y-m-d H:i'}</span>
+        <span>發布時間：{gboot:content:date style='Y-m-d H:i'}</span>
         <span>瀏覽次數：{gboot:content:visits}</span>
+        <span>作者：{gboot:content:author}</span>
     </div>
     <div class="content-body">
         {gboot:content:content}
     </div>
     
-    <!-- 上一篇 / 下一篇導航 -->
     <div class="prev-next">
         <p>上一篇：{gboot:content:pre}</p>
         <p>下一篇：{gboot:content:next}</p>
     </div>
 </article>
 ```
-

@@ -1,33 +1,47 @@
-# Gbootcms 開發者與維運手冊 (Wiki)
+# 📚 Gbootcms 技術文檔庫
 
-歡迎查閱 **Gbootcms** 官方文檔庫。本項目是現代化 Go 語言原生內容管理系統，專為高並發、極致輕量與生產級穩定性而設計。
-
-本手冊嚴格遵循**奧卡姆剃刀原則（如無必要，勿增實體）**，文字言簡意賅，並為核心功能提供立即可用的程式碼案例。
+歡迎查閱 **Gbootcms** 官方文檔。Gbootcms 為基於 Go 語言開發的高性能通用內容管理系統，支援單一靜態二進制分發、SQLite WAL 併發儲存與 PbootCMS 原生標籤相容。
 
 ---
 
-## 核心章節導覽
+## ⚡ 核心優勢
 
-| 專題模組 | 內容摘要 | 關鍵代碼範例 |
+| 特性模組 | 技術實現 | 交付價值 |
 | :--- | :--- | :--- |
-| **[全景使用手冊 (Guide)](guide)** | **從入門、架構、標籤、壓縮到部署的完整全景指南** | **推薦閱讀** |
-| [快速上手 (Quick Start)](Quick-Start) | 開發環境、本地編譯、發行版打包與啟動 | `build-run.bat`, `build-linux.bat` |
-| [系統架構 (Architecture)](Architecture) | 單一 DB 連線池、唯一 Migrate 入口、遙測單一資料源 | `core/db/db.go`, `telemetry.go` |
-| [前台標籤語法 (TagParser)](TagParser-Guide) | `{gboot:xxx}` 標籤語法、欄目與內容解析 | `{gboot:nav}`, `{gboot:list}` |
-| [原生圖片壓縮 (Image Compression)](Image-Compression) | 純 Go 伺服器端 WebP 轉碼與雙三次縮放管道 | `imgcompress.CompressToWebP()` |
-| [多語言與路徑劃分 (Multilingual)](Multilingual) | 路徑前綴劃分、語言專屬模板、標準標籤生態 | `/en/`, `template/en/` |
-| [SEO 與 GEO 配套 (SEO & GEO)](SEO-and-GEO) | 動態 Host 感知 Robots、多語系 Sitemap、JSON-LD | `robots.txt`, `llms.txt`, Schema |
-| [生產部署 (Deployment Guide)](Deployment-Guide) | UPX 極限壓縮二進制、1Panel API 自動化熱部署 | `deploy-1panel.ps1`, Docker |
+| **部署模型** | 純 Go 靜態編譯 (`CGO_ENABLED=0`) | 零動態鏈結庫依賴，單檔案跨平台部署 |
+| **資料存儲** | SQLite 3 WAL 模式 (`glebarez/sqlite`) | 支援讀寫分離與高併發存取，無需安裝獨立資料庫服務 |
+| **圖片處理** | 伺服器端原生 WebP 編碼與平滑縮放 | 自動壓縮上傳圖片，降低存儲空間與 CDN 流量成本 |
+| **多語言支援** | 路由前綴隔離 (`/`, `/en/`, `/sc/`) | 支援多語系獨立內容分區與動態字典替換 |
+| **檢索最佳化** | 內建 Schema.org JSON-LD 與 hreflang | 提高搜尋引擎爬蟲解析精確度，提供標準 `/llms.txt` 接口 |
 
 ---
 
-## 快速代碼範例：30 秒啟動一個自定義控制器
+## 🧭 文檔目錄
+
+### 1. 入門與部署
+- [⚡ 快速上手 (Quick Start)](Quick-Start)：環境需求、二進制編譯與基本運行流程。
+- [🧭 全景指南 (Full Guide)](guide)：涵蓋從開發、配置到維運的一站式技術指南。
+- [🚢 生產部署 (Deployment)](Deployment-Guide)：Linux 服務配置、極限壓縮打包與自動化發布。
+
+### 2. 系統架構與特性
+- [📦 系統架構 (Architecture)](Architecture)：連線池架構、資料遷移機制與系統遙測。
+- [🌐 多語言路由 (Multilingual)](Multilingual)：語言分區路由策略、資料庫外鍵關聯與模板解析。
+- [🖼️ 圖片轉碼管線 (Image Processing)](Image-Compression)：圖像上傳自動化轉碼、規格約束與演算法說明。
+
+### 3. 視圖與標籤
+- [🏷️ 標籤解析語法 (TagParser)](TagParser-Guide)：前台動態標籤、分頁、文章列表與欄目解析規範。
+- [🤖 SEO 與 AI 檢索 (SEO & GEO)](SEO-and-GEO)：動態 `robots.txt`、結構化資料輸出與大模型索引配置。
+
+---
+
+## 💻 快速呼叫範例
+
+在自訂業務控制器中存取全域資料庫連線池：
 
 ```go
 package hello
 
 import (
-	"net/http"
 	"gbootcms/apps/common"
 	"gbootcms/core/db"
 	"github.com/gin-gonic/gin"
@@ -37,15 +51,14 @@ type HelloController struct {
 	common.BaseController
 }
 
-func (ctrl *HelloController) Ping(c *gin.Context) {
-	// 透過唯一 DB 連線執行查詢
-	var count int64
-	db.DB.Table("ay_content").Count(&count)
+func (ctrl *HelloController) Index(c *gin.Context) {
+	var total int64
+	db.DB.Table("ay_content").Where("status = ?", 1).Count(&total)
 
-	// 使用統一 JSON 格式響應
 	ctrl.JSONOK(c, gin.H{
-		"message": "pong",
-		"total_articles": count,
+		"code":    1,
+		"message": "success",
+		"total":   total,
 	})
 }
 ```

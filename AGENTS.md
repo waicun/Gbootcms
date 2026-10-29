@@ -178,6 +178,6 @@ pwsh -File tools/deploy-1panel.ps1 -Restart
 
 ## Git 規範
 
-- 倉庫：`https://github.com/vikim540/Gbootcms.git`
+- 倉庫：`https://github.com/waicun/Gbootcms.git`
 - 主分支：`main`
 - 規範：Conventional Commits（`feat:` / `fix:` / `refactor:` / `docs:` / `chore:`）

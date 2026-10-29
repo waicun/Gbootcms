@@ -1,2 +1,2 @@
 ---
-*Gbootcms 官方維護文檔庫 | 基於 MIT 開源協定 | Powered by Go 1.25*
+© 2026 Gbootcms. 分發協議：[MIT License](https://github.com/waicun/Gbootcms/blob/main/LICENSE)。

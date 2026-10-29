@@ -1,126 +1,107 @@
 # Gbootcms
 
-> 現代化 Go 語言企業級內容管理系統 — 採用純 Go 高並發技術棧，具備單一二進制分發、SQLite WAL 併發讀寫、多語言與營銷歸因追蹤。
+基於 Go 語言開發的通用內容管理系統（CMS），相容 PbootCMS 模板標籤語法與 `ay_` 資料表結構。
 
 [![Go Version](https://img.shields.io/badge/Go-1.25-00ADD8)](https://go.dev/)
 [![Gin](https://img.shields.io/badge/Gin-v1.12-00ADD8)](https://gin-gonic.com/)
 [![GORM](https://img.shields.io/badge/GORM-v1.31-00ADD8)](https://gorm.io/)
-[![SQLite](https://img.shields.io/badge/SQLite-pureGo_WAL-003B57)](https://github.com/glebarez/sqlite)
-[![UPX](https://img.shields.io/badge/Binary-<13MB-green)](https://upx.github.io/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+---
+
+## 產品特性
+
+- **單一二進制分發**：原生編譯，`CGO_ENABLED=0` 零動態連結庫依賴，跨平台開箱即用。
+- **高併發資料存儲**：採用 SQLite WAL 模式，支援併發讀取與安全寫入。
+- **自動化圖片轉碼**：上傳時自動進行雙三次平滑縮放與 WebP 轉碼，降低磁碟占用與傳輸頻寬。
+- **原生多語言架構**：提供路徑前綴路由（`/`、`/en/`、`/sc/`），資料分區隔離與模板字典渲染。
+- **搜尋引擎與 AI 檢索**：
+  - 環境感知 `robots.txt` 與多語系 XML `sitemap.xml`。
+  - 標準 Schema.org JSON-LD 結構化資料。
+  - 雙向精確 `hreflang` 多語言對齊。
+  - AI 爬蟲檢索端點（`/llms.txt`、`/llms-full.txt`）。
+- **完整後台與 API**：包含欄目、內容、媒體庫、自訂表單、日誌管理，提供 RESTful API（支援 JWT 與 API Key 驗證）。
 
 ---
 
 ## 快速開始
 
-### 本地編譯與運行
+### 1. 下載預編譯版本
 
-```powershell
-# 編譯二進制（輸出至 bin/）
-go build -trimpath -ldflags="-s -w" -o bin/gbootcms.exe .
+至 [Releases](https://github.com/waicun/Gbootcms/releases) 下載對應作業系統的壓縮包：
 
-# 啟動服務
-.\bin\gbootcms.exe
+```bash
+# Linux
+tar -xzf gbootcms-linux.tar.gz
+cd gbootcms-linux
+chmod +x start.sh
+./start.sh
 
-# 或使用一鍵腳本
-.\build-run.bat
+# Windows
+# 解壓 gbootcms-windows.zip 後執行 start.bat
 ```
 
-- **前台展示**：http://localhost:8080/
-- **後台管理**：http://localhost:8080/admin
-- **預設帳號**：`admin` / `123456`（首次登入後請立即修改）
+### 2. 源碼編譯
 
-### Linux 跨平台極簡打包
+```bash
+# 取得源碼
+git clone https://github.com/waicun/Gbootcms.git
+cd Gbootcms
 
-```powershell
-# 一鍵打包 Linux amd64 極限壓縮發行版（自動 UPX 壓縮，體積 < 13MB）
-.\build-linux.bat
-# 產物路徑：dist/gbootcms-linux.tar.gz
+# 編譯
+go build -trimpath -ldflags="-s -w" -o bin/gbootcms .
+
+# 運行
+./bin/gbootcms
 ```
+
+### 3. 系統訪問
+
+- 前台首頁：`http://localhost:8080/`
+- 後台管理：`http://localhost:8080/admin`
+- 預設憑據：帳號 `admin` / 密碼 `123456`
 
 ---
 
-## 核心技術棧
+## 技術架構
 
-| 層次 | 選型 | 說明 |
+| 組件 | 選型 | 說明 |
 | :--- | :--- | :--- |
-| **程式語言** | Go 1.25 | 單一二進制原生部署，`CGO_ENABLED=0` 零依賴 |
-| **Web 核心** | Gin v1.12 | 現代化高並發 HTTP 路由器與中介軟體管道 |
-| **ORM 映射** | GORM v1.31 | 單一 `core/db/db.go` 入口，嚴格遵循 `ay_` 原版表結構 |
-| **資料庫引擎** | Pure-Go SQLite 3 | WAL 高並發讀寫日誌模式，免裝 GCC / CGO |
-| **圖片壓縮管道** | Pure-Go WebP (`gowebp`) | 伺服器端原生自動圖片轉碼與縮放，無外部 C 庫 |
-| **後台模板引擎** | Pongo2 v6.1 | Django 風格語義 AST 視圖渲染器 + 語法預處理器 |
-| **前台解析引擎** | 自研 TagParser | `{gboot:xxx}` 標籤體系 + fsnotify 模板熱重載 |
-| **多語言架構** | 路由前綴 + 語言模板 | /、/en/、/sc/ 前綴路徑隔離，標準 CMS 標籤原生解析 |
-| **遙測監控** | Unified Telemetry Engine | `core/version/telemetry.go` 單一資料源，保證首頁與監控頁 100% 一致 |
-
----
-
-## 最新架構特性
-
-### 1. 伺服器端原生圖片壓縮與 WebP 管道
-- **完全取代前端偽 Canvas 壓縮**：後端 `IndexController.Upload()` 內建 `imgcompress` 處理管道。
-- **全入口覆蓋**：管理後台單圖/多圖、UEditor 富文本貼圖、RESTful API 上傳均自動觸發。
-- **純 Go 零 CGO**：採用 `github.com/KarpelesLab/gowebp` 與 `golang.org/x/image/draw` 進行高品質平滑縮放與 WebP 轉碼，檔案體積減幅達 60%~85%，無縫支援透明通道與 EXIF。
-
-### 2. SEO & GEO 搜尋引擎基礎配套
-- **動態環境感知 Robots.txt**：自動根據 `Host` 判斷測試域名（強制輸出 `Disallow: /` 及 `X-Robots-Tag: noindex`）與生產域名（輸出 `Allow: /` 及 Sitemap 索引）。
-- **XML Sitemap 多語系覆蓋**：`/sitemap.xml` 總索引自動分發每語言獨立 Sitemap（`/sitemap-{acode}.xml`）。
-- **LLMs.txt 大模型標準索引**：標準 `/llms.txt` 端點支援 AI Agent 快速精準檢索。
-- **JSON-LD 結構化資料**：自動輸出標準 Schema.org 規範之 `Article`、`WebSite` 標註，消除重複內容。
-- **精準雙向 hreflang**：基於跨語言關聯 ID（`rel_id`）精確映射多語系對應文章，嚴禁無依據之位次猜測。
-
-### 3. 多語言單一模板架構（奧卡姆剃刀）
-- 徹底刪除冗餘的 72 個多語系物理 HTML 模板（`template/en/`、`template/sc/`）。
-- 全站收斂為單一 `template/default/`，透過動態 `{i18n:...}` 多語言字典於運行時完成國際化替換，維護成本降低 66%。
-
-### 4. 媒體庫健全度與防禦
-- **路徑雙向對齊**：徹底解決數據庫路徑（`/upload/...`）與磁盤物理路徑（`static/upload/...`）不一致導致的誤判與清理誤刪。
-- **系統檔案過濾**：自動忽略 `.gitkeep`、`.DS_Store` 等隱藏維護檔案。
-- **WebP 尺寸解析**：內建 WebP 解碼驅動，正確讀取現代格式尺寸資訊。
+| **開發語言** | Go 1.25 | 單一靜態二進制部署 |
+| **Web 框架** | Gin v1.12 | HTTP 路由與中介軟體處理 |
+| **資料庫引擎** | SQLite 3 (`glebarez/sqlite`) | WAL 併發模式，純 Go 驅動 |
+| **ORM** | GORM v1.31 | 關係映射，相容 `ay_` 資料表 |
+| **圖片處理** | `gowebp` + `x/image` | 原生 WebP 編碼與圖像縮放 |
+| **前台模板** | TagParser | 相容 `{gboot:xxx}` 標籤語法 |
+| **後台模板** | Pongo2 v6.1 | 後台視圖渲染 |
 
 ---
 
 ## 目錄結構
 
 ```
-gbootcms/
-├── main.go                          # 服務入口、優雅關閉與路由分發
-├── config/                          # 系統配置（Viper，支援環境變數覆蓋）
-├── core/                            # 核心底層引擎
-│   ├── db/                          # 唯一資料庫連線與 WAL 設定
-│   ├── basic/                       # 後台 Pongo2 視圖渲染器與標籤預處理
-│   ├── version/                     # 系統版本資訊與統一遙測引擎 (telemetry.go)
-│   ├── acodeplugin/                 # 多語言區域自動隔離 GORM 插件
-│   └── mediaplugin/                 # 媒體快取與髒標記 GORM 插件
-├── apps/
-│   ├── route/                       # HTTP 路由表註冊與別名映射
-│   ├── api/                         # RESTful API 端點（JWT + API Key 雙認證）
-│   ├── common/                      # 公共組件
-│   │   ├── imgcompress/             # 伺服器端純 Go 圖片 WebP 壓縮轉碼引擎
-│   │   ├── parser/                  # 前台標籤解析、JSON-LD、Sitemap
-│   │   ├── middleware/              # 認證、SEO隔離、快取、安全頭中介軟體
-│   │   ├── session.go               # 記憶體狀態管理
-│   │   └── captcha.go               # 點陣運算驗證碼
-│   ├── admin/                       # 後台管理模組 (Controller/Model/View/Service)
-│   └── home/                        # 前台展示模組 (FrontController)
-├── template/default/                # 前台唯一模板目錄（字典化支援多語言）
-├── static/                          # 靜態資源（後台樣式、上傳素材）
-├── data/                            # SQLite 資料庫檔案
-├── bin/                             # 編譯產物
-└── dist/                            # Linux 發行壓縮包
+Gbootcms/
+├── apps/               # 業務模組 (admin, home, api, common)
+├── bin/                # 編譯產物
+├── config/             # 系統設定檔
+├── core/               # 核心底層 (db, version, plugins)
+├── data/               # SQLite 資料庫目錄
+├── static/             # 靜態資源 (css, js, upload)
+├── template/           # 前台視圖模板
+├── wiki/               # 技術文檔
+├── main.go             # 程式進入點
+└── LICENSE             # MIT 授權條款
 ```
 
 ---
 
-## 開發約束
+## 相關文檔
 
-1. **資料庫零改動**：不得隨意更改或刪除原版 `ay_` 資料表結構。
-2. **奧卡姆剃刀**：如無必要，勿增實體。禁止為單一功能疊床架屋，優先收斂於既有核心模組。
-3. **無 CGO 依賴**：全專案嚴格保持 `CGO_ENABLED=0`，確保交叉編譯與單一二進制移植性。
-4. **標準繁體中文**：所有註釋、代碼文檔與介面文字遵循簡練專業規範，拒絕虛偽敘事與廢話文學。
+- 完整技術文檔請參閱 [Gbootcms Wiki](https://github.com/waicun/Gbootcms/wiki)。
+- 問題反饋與功能需求請提交至 [Issues](https://github.com/waicun/Gbootcms/issues)。
 
 ---
 
-## License
+## 授權條款
 
-採用 MIT 開源協議分發。
+本項目採用 [MIT License](LICENSE) 授權。
