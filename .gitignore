@@ -105,3 +105,5 @@ data/gbootcms.db
 
 node_modules/
 tools/
+
+deploy.bat
