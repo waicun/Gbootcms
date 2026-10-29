@@ -59,6 +59,10 @@ func (cf *ConfigController) Index(c *gin.Context) {
 	}
 
 	if c.Request.Method == "POST" {
+		if common.IsDemoMode() {
+			cf.JSONFail(c, "演示環境已開啟保護模式，禁止修改系統全局配置！")
+			return
+		}
 		names := []string{
 			"cmsname",
 			"close_site", "close_site_note", "open_wap", "wap_domain",

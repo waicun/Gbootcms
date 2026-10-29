@@ -9,6 +9,13 @@ import (	"gbootcms/apps/admin/model/content"
 	"github.com/gin-gonic/gin"
 )
 
+// IsDemoMode 判斷當前系統是否處於演示/展示模式
+// 可透過環境變數 DEMO_MODE=true 或 DEMO_MODE=1 開啟
+func IsDemoMode() bool {
+	v := strings.ToLower(os.Getenv("DEMO_MODE"))
+	return v == "1" || v == "true" || v == "yes" || v == "on"
+}
+
 // IsStagingHost 判斷當前請求的主機是否為測試站、預覽站或本地開發環境
 // 規則：
 //  1. 若 Host 包含 .eu.org、.test、.local、localhost、127.0.0.1、或包含端口號（:8080 等），直接判定為非生產環境

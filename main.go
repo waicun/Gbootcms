@@ -174,6 +174,30 @@ func main() {
 		})
 	})
 
+	// 根目錄 favicon.ico 專屬處理（消除反向代理與瀏覽器 404 日誌報警）
+	r.GET("/favicon.ico", func(c *gin.Context) {
+		icoPath := filepath.Join(cfg.App.StaticDir, "admin", "images", "favicon.ico")
+		if _, err := os.Stat(icoPath); err == nil {
+			c.File(icoPath)
+			return
+		}
+		c.Status(http.StatusNoContent)
+	})
+
+	// 惡意探測防護中介軟體：阻斷針對敏感檔案（.md, .json, .env, .git, .sql, .db 等）的自動化掃描
+	r.Use(func(c *gin.Context) {
+		p := strings.ToLower(c.Request.URL.Path)
+		if strings.HasSuffix(p, ".env") || strings.Contains(p, "/.git") ||
+			(strings.HasSuffix(p, ".md") && !strings.HasPrefix(p, "/content/") && !strings.HasPrefix(p, "/news/")) ||
+			strings.HasSuffix(p, ".sql") || strings.HasSuffix(p, ".db") ||
+			p == "/config.json" || p == "/config.js" || p == "/js/env.js" || p == "/api/config" ||
+			p == "/claude.md" || p == "/agents.md" {
+			c.AbortWithStatus(http.StatusNotFound)
+			return
+		}
+		c.Next()
+	})
+
 	// 靜態資源長期緩存（CSS/JS/圖片/字體，1年 immutable）
 
 	// URL 規範化：剝離 .html 後綴 + 語言前綴解析（/sc /tc /en）

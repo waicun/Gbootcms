@@ -170,6 +170,10 @@ func (ctrl *DatabaseController) DownloadBackup(c *gin.Context) {
 
 // deleteBackup 刪除備份檔案
 func (ctrl *DatabaseController) deleteBackup(c *gin.Context) {
+	if common.IsDemoMode() {
+		ctrl.JSONFail(c, "演示環境已開啟保護模式，禁止刪除資料庫備份！")
+		return
+	}
 	filename := c.PostForm("file")
 	// 安全驗證
 	if strings.Contains(filename, "/") || strings.Contains(filename, "\\") || strings.Contains(filename, "..") {
@@ -474,6 +478,10 @@ func (ctrl *DatabaseController) getTableList(c *gin.Context) ([]string, error) {
 
 // RestoreSQLite 從備份檔案恢復 SQLite 資料庫
 func (ctrl *DatabaseController) RestoreSQLite(c *gin.Context) {
+	if common.IsDemoMode() {
+		ctrl.JSONFail(c, "演示環境已開啟保護模式，禁止執行資料庫還原！")
+		return
+	}
 	filename := c.PostForm("file")
 	if filename == "" {
 		ctrl.JSONFail(c, "請選擇備份檔案！")

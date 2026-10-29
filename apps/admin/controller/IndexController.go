@@ -323,6 +323,10 @@ func (ic *IndexController) Ucenter(c *gin.Context) {
 }
 
 func (ic *IndexController) UcenterMod(c *gin.Context) {
+	if common.IsDemoMode() {
+		ic.JSONFail(c, "演示環境已開啟保護模式，禁止修改管理員密碼！")
+		return
+	}
 	uid := common.GetSessionInt(c, "admin_uid")
 
 	oldPwd := c.PostForm("oldpassword")

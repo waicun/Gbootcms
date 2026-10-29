@@ -175,6 +175,12 @@ func (uc *UserController) Mod(c *gin.Context) {
 		return
 	}
 
+	// 演示環境保護
+	if common.IsDemoMode() && (params["field"] == "password" || c.PostForm("password") != "") {
+		uc.JSONFail(c, "演示環境已開啟保護模式，禁止修改用戶密碼！")
+		return
+	}
+
 	// 內置管理員保護
 	if ucode == "10001" {
 		field := params["field"]
@@ -299,6 +305,12 @@ func (uc *UserController) Del(c *gin.Context) {
 
 	if ucode == "" {
 		uc.JSONFail(c, "傳遞的參數值錯誤！")
+		return
+	}
+
+	// 演示環境保護
+	if common.IsDemoMode() {
+		uc.JSONFail(c, "演示環境已開啟保護模式，禁止刪除管理員用戶！")
 		return
 	}
 
