@@ -1,39 +1,38 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <title>{sort:name} - {gboot:sitetitle}</title>
-    <meta name="keywords" content="{sort:keywords}">
-    <meta name="description" content="{sort:description}">
-</head>
-<body>
-    {include file=head.html}
+{include file=comm/head.html}
 
-    <div class="breadcrumb">{gboot:position separator=/}</div>
+{include file=comm/top.html}
 
-    <h1>{sort:name}</h1>
+<div class="container pages">    
 
-    <div class="content-list">
-        {gboot:list scode={sort:scode} num=15 order=date page=1}
-        <div class="list-item">
-            <a href="[list:link]">
-                {gboot:if('[list:ico]'!='')}
-                <img src="[list:ico]" alt="[list:title]">
-                {/gboot:if}
-                <h3 {gboot:if('[list:titlecolor]'!='')}style="color: [list:titlecolor]"{/gboot:if}>[list:title]</h3>
-                <span>[list:date style=Y-m-d]</span>
-            </a>
-        </div>
+  	 {include file=comm/position.html}
+  	 
+  	 {include file=comm/sortnav.html}
+
+	 <!-- 列表內容 -->
+     <ul>
+        {gboot:list num=10 order=date}
+        	<li class="lh-3 border-bottom-dashed">
+                <i class="fa fa-angle-right text-info"></i>
+                <a href="[list:link]">
+                	<span class="d-none d-md-inline">[list:title lencn=35]</span><!-- PC端 -->
+                	<span class="d-inline d-md-none">[list:title lencn=15]</span><!-- 移動端 -->
+                	{gboot:if([list:istop]==1)}
+                		<span class="badge badge-danger">置頂</span>
+                	{/gboot:if}
+                	{gboot:if([list:isrecommend]==1)}
+                		<span class="badge badge-warning">推薦</span>
+                	{/gboot:if}
+                	{gboot:if([list:isheadline]==1)}
+                		<span class="badge badge-info">頭條</span>
+                	{/gboot:if}
+                	<span class="float-right text-muted small">[list:date style=Y-m-d]</span>
+                </a>
+            </li>
         {/gboot:list}
-    </div>
+    </ul>
+    
+	{include file=comm/page.html}
+ 	
+</div>
 
-    <div class="pagination">
-        <a href="{page:index}">首頁</a>
-        <a href="{page:pre}">上一頁</a>
-        <span>{page:current}/{page:count}</span>
-        <a href="{page:next}">下一頁</a>
-        <a href="{page:last}">末頁</a>
-    </div>
-
-    {include file=foot.html}
-
+{include file=comm/foot.html}

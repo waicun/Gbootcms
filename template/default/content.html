@@ -1,34 +1,27 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <title>{content:title} - {gboot:sitetitle}</title>
-    <meta name="keywords" content="{content:keywords}">
-    <meta name="description" content="{content:description}">
-</head>
-<body>
-    {include file=comm/head.html}
+{include file=comm/head.html}
 
-    <div class="breadcrumb">{gboot:position separator=/}</div>
+{include file=comm/top.html}
 
-    <article class="content-detail">
-        <h1 {gboot:if('{content:titlecolor}'!='')}style="color: {content:titlecolor};"{/gboot:if}>{content:title}</h1>
-        <div class="meta">
-            <span>作者：{content:author}</span>
-            <span>時間：{content:date style=Y-m-d}</span>
-            <span>瀏覽：{content:visits}</span>
-        </div>
-        <div class="content-body">
-            {content:content}
-        </div>
-    </article>
+<div class="container pages">
 
-    {include file=comm/comment.html}
+	{include file=comm/position.html}
+
+    <h2 class="text-center fs-sm-28 fs-20 mt-3" {gboot:if('{content:titlecolor}'!='')}style="color: {content:titlecolor};"{/gboot:if}>{content:title}</h2>
+    <div class="text-center border-bottom text-secondary pb-2 mb-3">
+    	  時間：{content:date style=Y-m-d}&nbsp;&nbsp;&nbsp;作者：{content:author}&nbsp;&nbsp;&nbsp;訪問量：{content:visits}
+    </div>
+	<div class="content md-content mb-3">{content:content}</div>
+	<div class="text-secondary lh-2">
+		<p>上一篇：{content:precontent}</p>
+		<p>下一篇：{content:nextcontent}</p>
+	</div>
+</div>
+
+{include file=comm/comment.html}
 
 <script>
 // 訪問量異步統計（不阻塞渲染，GORM 回調已過濾 visits 欄位不清快取）
 $.get('/api/visits?id={content:id}');
 </script>
 
-    {include file=comm/foot.html}
-
+{include file=comm/foot.html}

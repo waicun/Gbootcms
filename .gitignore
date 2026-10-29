@@ -33,8 +33,10 @@ static/backup/
 
 # ===== 數據庫 / Database =====
 data/*.db
+data/*.db.bak
 data/*.db-shm
 data/*.db-wal
+*.bak
 *.sqlite
 *.sqlite3
 *.sql-journal

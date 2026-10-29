@@ -422,35 +422,42 @@ func buildOpenGraph(ctx *Context) string {
 // resolvePageTitle 根據頁面類型讀取對應的 *_title 配置，解析巢狀標籤後返回最終標題
 func resolvePageTitle(ctx *Context) string {
 	var tmpl string
-	if ctx.Content != nil && ctx.Sort != nil {
-		// 內容頁（有欄目和內容）
+	if ctx.Sort != nil && (ctx.Sort.Mcode == "1" || ctx.Sort.Type == 1) {
+
+		// 單頁模型（Mcode == "1" 為單頁，對齊 PbootCMS about_title）
+		tmpl = db.GetConfigValue("about_title", "")
+		if tmpl == "" {
+			tmpl = "{content:title}-{gboot:sitetitle}-{gboot:sitesubtitle}"
+		}
+	} else if ctx.Content != nil && ctx.Sort != nil {
+		// 內容詳情頁（有欄目和內容，且非單頁）
 		tmpl = db.GetConfigValue("content_title", "")
+		if tmpl == "" {
+			tmpl = "{content:title}-{sort:name}-{gboot:sitetitle}-{gboot:sitesubtitle}"
+		}
 	} else if ctx.Sort != nil {
 		// 列表/欄目頁
 		tmpl = db.GetConfigValue("list_title", "")
+		if tmpl == "" {
+			tmpl = "{sort:name}-{gboot:sitetitle}-{gboot:sitesubtitle}"
+		}
 	} else if ctx.Content != nil {
 		// 單頁（有內容但無欄目）
 		tmpl = db.GetConfigValue("about_title", "")
+		if tmpl == "" {
+			tmpl = "{content:title}-{gboot:sitetitle}-{gboot:sitesubtitle}"
+		}
 	} else {
 		// 首頁
 		tmpl = db.GetConfigValue("index_title", "")
-	}
-
-	if tmpl == "" {
-		// 配置為空時使用預設值（對齊 PHP 各方法的預設格式）
-		if ctx.Content != nil && ctx.Sort != nil {
-			tmpl = "{content:title}-{sort:name}-{gboot:sitetitle}-{gboot:sitesubtitle}"
-		} else if ctx.Sort != nil {
-			tmpl = "{sort:name}-{gboot:sitetitle}-{gboot:sitesubtitle}"
-		} else if ctx.Content != nil {
-			tmpl = "{content:title}-{gboot:sitetitle}-{gboot:sitesubtitle}"
-		} else {
+		if tmpl == "" {
 			tmpl = "{gboot:sitetitle}-{gboot:sitesubtitle}"
 		}
 	}
 
 	return resolveTitleTags(tmpl, ctx)
 }
+
 
 // resolvePageKeywords 根據頁面類型返回關鍵詞
 func resolvePageKeywords(ctx *Context) string {
