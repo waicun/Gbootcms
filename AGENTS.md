@@ -100,8 +100,7 @@ pbootcms-go/
 ├── template/                        # 前台模板目錄（default/、en/、sc/，標準 {gboot:xxx} 標籤）
 ├── static/                          # 全域靜態資源與上傳目錄 (static/upload/)
 ├── data/                            # SQLite 資料庫檔案
-├── bin/                             # 編譯產物輸出目錄
-└── docs/                            # 專案技術文檔
+└── bin/                             # 編譯產物輸出目錄
 ```
 
 ---
