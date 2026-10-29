@@ -34,10 +34,8 @@ func SecurityHeaders() gin.HandlerFunc {
 		// 權限策略：禁用不需要的瀏覽器 API（麥克風、攝像頭、地理位置等）
 		c.Header("Permissions-Policy", "microphone=(), camera=(), geolocation=(), payment=()")
 
-		// 內容安全策略（CSP）：寬鬆模式，兼容 Layui jQuery 和內聯樣式
-		// default-src 限制所有資源來源；script-src 允許內聯和 eval（Layui 依賴）
-		// style-src 允許內聯樣式；img-src 允許 data: URI（Layui 圖標）
-		c.Header("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; frame-ancestors 'self'; base-uri 'self'; form-action 'self'")
+		// 內容安全策略（CSP）：允許外部 HTTPS 圖片/圖床外鏈、字體、數據 URI 與 blob
+		c.Header("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https: blob:; font-src 'self' data: https:; frame-ancestors 'self'; base-uri 'self'; form-action 'self'")
 
 		c.Next()
 	}
